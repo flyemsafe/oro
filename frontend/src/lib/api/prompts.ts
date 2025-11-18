@@ -38,7 +38,7 @@ export const promptsApi = {
     if (params.sort_order) queryParams.append('sort_order', params.sort_order)
 
     const { data } = await api.get<PromptsResponse>(
-      `/prompts?${queryParams.toString()}`
+      `/v1/prompts?${queryParams.toString()}`
     )
     return data
   },
@@ -47,7 +47,7 @@ export const promptsApi = {
    * Fetch a single prompt by ID
    */
   async fetchPrompt(id: string): Promise<Prompt> {
-    const { data } = await api.get<Prompt>(`/prompts/${id}`)
+    const { data } = await api.get<Prompt>(`/v1/prompts/${id}`)
     return data
   },
 
@@ -55,7 +55,7 @@ export const promptsApi = {
    * Create a new prompt
    */
   async createPrompt(input: CreatePromptInput): Promise<Prompt> {
-    const { data } = await api.post<Prompt>('/prompts', input)
+    const { data } = await api.post<Prompt>('/v1/prompts', input)
     return data
   },
 
@@ -63,7 +63,7 @@ export const promptsApi = {
    * Update an existing prompt
    */
   async updatePrompt(id: string, input: UpdatePromptInput): Promise<Prompt> {
-    const { data } = await api.put<Prompt>(`/prompts/${id}`, input)
+    const { data } = await api.put<Prompt>(`/v1/prompts/${id}`, input)
     return data
   },
 
@@ -71,6 +71,6 @@ export const promptsApi = {
    * Delete a prompt
    */
   async deletePrompt(id: string): Promise<void> {
-    await api.delete(`/prompts/${id}`)
+    await api.delete(`/v1/prompts/${id}`)
   },
 }
