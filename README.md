@@ -32,15 +32,41 @@
 
 Screenshots and UI demonstrations will be added in v0.2.0 as the interface stabilizes.
 
+## Technology Stack
+
+**Oro** is built as a Next.js 14 full-stack application:
+
+- **Framework**: Next.js 14 (App Router)
+- **Language**: TypeScript
+- **Database**: SQLite with Prisma ORM
+- **UI**: React 18 + Tailwind CSS + shadcn/ui
+- **State Management**: TanStack Query (React Query)
+- **API**: Next.js API Routes (REST)
+
+### Architecture
+
+```
+Oro (Next.js Full-Stack)
+├── Frontend (React Components)
+├── Backend (API Routes)
+└── Database (SQLite + Prisma)
+```
+
+**Benefits of this architecture:**
+- ✅ Single application (no separate frontend/backend)
+- ✅ One command to run (`npm run dev`)
+- ✅ No CORS issues
+- ✅ Type-safe from database to UI
+- ✅ Built-in database safety (automatic backups)
+- ✅ Fast hot reload with Turbopack
+
 ## Getting Started
 
 ### Prerequisites
 
 Before you begin, ensure you have the following installed:
 
-- **Python** 3.11 or higher
-- **Node.js** 18+ with npm
-- **PostgreSQL** 14+
+- **Node.js** 20+ with npm
 - **Git** 2.25+
 - **Docker/Podman** (optional, for containerized deployment)
 
@@ -59,47 +85,28 @@ See [Development Setup](#development-setup) below.
 1. **Clone the repository**
    ```bash
    git clone https://github.com/flyemsafe/oro.git
-   cd oro
+   cd oro/frontend
    ```
 
-2. **Set up the backend**
+2. **Install dependencies**
    ```bash
-   # Create Python virtual environment
-   python3 -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-   # Install dependencies
-   pip install -r requirements.txt
-
-   # Set up environment variables
-   cp .env.example .env
-   # Edit .env with your configuration
-
-   # Run migrations
-   alembic upgrade head
-
-   # Start the server
-   uvicorn app.main:app --reload
-   ```
-
-3. **Set up the frontend**
-   ```bash
-   cd frontend
-
-   # Install dependencies
    npm install
+   ```
 
-   # Configure environment
-   cp .env.example .env.local
+3. **Set up the database**
+   ```bash
+   # Initialize the database
+   npm run db:migrate
+   ```
 
-   # Start dev server
+4. **Start the development server**
+   ```bash
    npm run dev
    ```
 
-4. **Access the application**
-   - Backend: http://localhost:8000
-   - Frontend: http://localhost:3000
-   - API Docs: http://localhost:8000/docs
+5. **Access the application**
+   - Application: http://localhost:3000
+   - API: http://localhost:3000/api/v1/*
 
 ## Quick Start
 
