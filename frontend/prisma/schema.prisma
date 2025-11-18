@@ -1,0 +1,76 @@
+// Oro - Prompt Management Database Schema
+// This schema uses SQLite for simplicity and supports safe migrations
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+/// Prompt model representing a reusable AI prompt
+/// A prompt is the core entity in Oro, containing the actual prompt text,
+/// optional system instructions, and metadata for organization and tracking.
+model Prompt {
+  id            String   @id @default(uuid())
+  name          String   @unique /// Unique human-readable name
+  content       String   /// The actual prompt text
+  systemPrompt  String?  @map("system_prompt") /// Optional system-level instructions
+  description   String?  /// Optional description
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // Relationships
+  tags          PromptTag[]
+  executions    Execution[]
+
+  @@index([name])
+  @@index([createdAt])
+  @@map("prompts")
+}
+
+/// Tag model for categorizing and organizing prompts
+/// Tags provide a flexible way to organize prompts by topic or use case
+model Tag {
+  id     Int    @id @default(autoincrement())
+  name   String @unique /// Unique tag name
+
+  // Relationships
+  prompts PromptTag[]
+
+  @@index([name])
+  @@map("tags")
+}
+
+/// Junction table for many-to-many relationship between Prompts and Tags
+model PromptTag {
+  promptId  String @map("prompt_id")
+  tagId     Int    @map("tag_id")
+
+  // Relationships
+  prompt    Prompt @relation(fields: [promptId], references: [id], onDelete: Cascade)
+  tag       Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([promptId, tagId])
+  @@map("prompt_tags")
+}
+
+/// Execution model for tracking prompt usage history and effectiveness
+/// An execution represents a single use of a prompt with optional rating
+model Execution {
+  id          Int      @id @default(autoincrement())
+  promptId    String   @map("prompt_id")
+  rating      Int?     /// Rating from 1-5 (validated in application layer)
+  success     Boolean  @default(true)
+  notes       String?
+  executedAt  DateTime @default(now()) @map("executed_at")
+
+  // Relationships
+  prompt      Prompt   @relation(fields: [promptId], references: [id], onDelete: Cascade)
+
+  @@index([promptId])
+  @@index([executedAt])
+  @@map("executions")
+}
