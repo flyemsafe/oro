@@ -1,0 +1,14 @@
+blank_issues_enabled: true
+
+contact_links:
+  - name: GitHub Discussions
+    url: https://github.com/flyemsafe/oro/discussions
+    about: Ask questions and discuss features with the community
+
+  - name: Documentation
+    url: https://github.com/flyemsafe/oro/tree/main/docs
+    about: Read comprehensive documentation and guides
+
+  - name: Development Guide
+    url: https://github.com/flyemsafe/oro/blob/main/docs/DEVELOPMENT.md
+    about: Set up your development environment and start contributing
