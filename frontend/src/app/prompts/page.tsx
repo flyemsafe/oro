@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import { Plus, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PromptList } from '@/components/prompts/PromptList'
@@ -13,6 +14,7 @@ import type { Prompt } from '@/types/prompt'
 const ITEMS_PER_PAGE = 12
 
 export default function PromptsPage() {
+  const router = useRouter()
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
@@ -80,8 +82,7 @@ export default function PromptsPage() {
   }
 
   const handleCreateNew = () => {
-    // TODO: Implement create dialog/modal in next iteration
-    toast.info('Create functionality coming soon!')
+    router.push('/prompts/new')
   }
 
   const totalPages = data ? Math.ceil(data.total / ITEMS_PER_PAGE) : 0
