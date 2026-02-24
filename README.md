@@ -133,6 +133,33 @@ See [Development Setup](#development-setup) below.
 3. Add notes about how it performed
 4. Use these insights to refine your prompts
 
+## Session Startup
+
+Use the session script to start or attach to Oro in a dedicated tmux workspace:
+
+```bash
+cd /home/radmin/Workspaces/datacenter/oro
+./tools/oro-session.sh
+```
+
+This creates:
+- `notes` window at repo root
+- `dev` window in `frontend/` running `npm run dev`
+- `git` window at repo root
+
+Useful options:
+
+```bash
+# Create session without attaching
+./tools/oro-session.sh --no-attach
+
+# Use a custom session name
+./tools/oro-session.sh --name oro-work
+
+# Kill the session
+./tools/oro-session.sh --kill
+```
+
 ## Development
 
 ### Development Setup
