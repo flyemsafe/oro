@@ -25,6 +25,7 @@
 - **🤖 LLM-Assisted Enhancement** - Use AI to analyze, optimize, and improve your prompts
 - **🔍 Search & Tags** - Powerful search and tagging system to organize and discover prompts
 - **📊 Execution Tracking** - Monitor prompt executions and outcomes
+- **📁 Project-Aware Notes** - Register project paths and write notes directly into project-local Markdown directories
 - **🏠 Self-Hosted** - Own your data completely - no cloud dependencies
 - **🔐 Privacy-First** - All prompts stored locally with no telemetry
 
