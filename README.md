@@ -135,30 +135,65 @@ See [Development Setup](#development-setup) below.
 
 ## Session Startup
 
-Use the session script to start or attach to Oro in a dedicated tmux workspace:
+Use the session script to kick off your working notes session (no tmux):
 
 ```bash
-cd /home/radmin/Workspaces/datacenter/oro
 ./tools/oro-session.sh
 ```
 
-This creates:
-- `notes` window at repo root
-- `dev` window in `frontend/` running `npm run dev`
-- `git` window at repo root
+Behavior:
+- Resolves notes to your current project workspace root by default.
+- Ensures `INBOX.md`, `prompts/`, `threads/`, and `archive/` exist.
+- Opens your editor so you can start writing immediately.
 
 Useful options:
 
 ```bash
-# Create session without attaching
-./tools/oro-session.sh --no-attach
+# Add a kickoff task template to INBOX.md
+./tools/oro-session.sh --kickoff
 
-# Use a custom session name
-./tools/oro-session.sh --name oro-work
+# Create and open a prompt file
+./tools/oro-session.sh --prompt --title "Landing page rewrite"
 
-# Kill the session
-./tools/oro-session.sh --kill
+# Force target notes directory
+./tools/oro-session.sh --notes-dir /home/radmin/Workspaces/swyguehub/mesingi
 ```
+
+## Work Item Tracking
+
+Oro now supports database-backed tracking for follow-ups from long AI sessions.
+
+- `Session`: imported transcript metadata (`source`, `sourcePath`, `hash`)
+- `WorkItem`: actionable unit (`TASK`, `PROMPT`, `QUESTION`, `DECISION`, `RISK`)
+- `FollowUp`: concrete next action attached to a work item
+- `WorkItemPromptLink`: relation between work items and reusable prompts
+
+### UI
+
+- `/work-items`: two working views:
+  - `Open Loops`: items in `OPEN`, `IN_PROGRESS`, `BLOCKED`
+  - `Needs Triage`: items in `TRIAGE`
+- Use **Capture Session** to paste conversation transcripts and extract work items.
+- `/sessions`: browse captured conversation sessions, transcript context, and extracted item outcomes.
+
+### API
+
+- `GET /api/v1/work-items?view=open|triage|all`
+- `POST /api/v1/work-items`
+- `PATCH /api/v1/work-items/:id`
+- `DELETE /api/v1/work-items/:id`
+- `POST /api/v1/work-items/extract` with payload:
+
+```json
+{
+  "content": "<conversation transcript>",
+  "source": "gemini",
+  "title": "Security Architecture Review Session"
+}
+```
+
+- `POST /api/v1/work-items/:id/promote` to promote a work item to the prompt library
+- `GET /api/v1/sessions` and `GET /api/v1/sessions/:id` for session history and detail
 
 ## Development
 

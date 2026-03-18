@@ -3,7 +3,10 @@ import type {
   Prompt,
   CreatePromptInput,
   UpdatePromptInput,
-  PromptsResponse
+  PromptsResponse,
+  RatePromptInput,
+  RenderTemplateInput,
+  RenderTemplateResponse,
 } from '@/types/prompt'
 
 export interface FetchPromptsParams {
@@ -29,7 +32,7 @@ export const promptsApi = {
     if (params.search) queryParams.append('search', params.search)
     if (params.category) queryParams.append('category', params.category)
     if (params.tags?.length) {
-      params.tags.forEach(tag => queryParams.append('tags', tag))
+      queryParams.append('tags', params.tags.join(','))
     }
     if (params.is_favorite !== undefined) {
       queryParams.append('is_favorite', params.is_favorite.toString())
@@ -72,5 +75,21 @@ export const promptsApi = {
    */
   async deletePrompt(id: string): Promise<void> {
     await api.delete(`/v1/prompts/${id}`)
+  },
+
+  /**
+   * Rate a prompt by creating an execution entry
+   */
+  async ratePrompt(id: string, input: RatePromptInput): Promise<{ average_rating: number | null; ratings_count: number }> {
+    const { data } = await api.post(`/v1/prompts/${id}/rate`, input)
+    return data
+  },
+
+  /**
+   * Render a template prompt with variable values
+   */
+  async renderPromptTemplate(id: string, input: RenderTemplateInput): Promise<RenderTemplateResponse> {
+    const { data } = await api.post<RenderTemplateResponse>(`/v1/prompts/${id}/render`, input)
+    return data
   },
 }

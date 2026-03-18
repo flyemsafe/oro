@@ -14,11 +14,13 @@ export default function NewPromptPage() {
   const handleSubmit = async (data: PromptFormValues) => {
     try {
       const payload: CreatePromptInput = {
-        name: data.title, // Map 'title' from form to 'name' for API
+        title: data.title,
         content: data.content,
-        system_prompt: undefined, // Optional field
-        description: undefined, // Optional field
-        tag_ids: [], // TODO: Map tag names to tag IDs when we have tag management
+        system_prompt: data.system_prompt || undefined,
+        description: data.description || undefined,
+        tags: data.tags,
+        is_favorite: data.is_favorite,
+        is_template: data.is_template,
       }
 
       await createPrompt.mutateAsync(payload)

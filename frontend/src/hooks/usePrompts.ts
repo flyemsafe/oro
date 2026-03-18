@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { promptsApi, type FetchPromptsParams } from '@/lib/api/prompts'
-import type { CreatePromptInput, UpdatePromptInput } from '@/types/prompt'
+import type { CreatePromptInput, UpdatePromptInput, RatePromptInput } from '@/types/prompt'
 
 const PROMPTS_QUERY_KEY = 'prompts'
 
@@ -79,6 +79,25 @@ export function useDeletePrompt() {
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.detail || 'Failed to delete prompt')
+    },
+  })
+}
+
+/**
+ * Hook to rate a prompt
+ */
+export function useRatePrompt() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: RatePromptInput }) =>
+      promptsApi.ratePrompt(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [PROMPTS_QUERY_KEY] })
+      toast.success('Prompt rating saved')
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error || 'Failed to save rating')
     },
   })
 }

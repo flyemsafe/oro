@@ -21,6 +21,8 @@ export const promptFormSchema = z.object({
     .array(z.string()),
   is_favorite: z
     .boolean(),
+  is_template: z
+    .boolean(),
 })
 
 export type PromptFormValues = z.infer<typeof promptFormSchema>

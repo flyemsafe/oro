@@ -12,6 +12,7 @@ interface PromptListProps {
   onEdit?: (prompt: Prompt) => void
   onDelete?: (id: string) => void
   onToggleFavorite?: (id: string, isFavorite: boolean) => void
+  onRatePrompt?: (id: string, rating: number) => void
   onCreateNew?: () => void
 }
 
@@ -22,6 +23,7 @@ export function PromptList({
   onEdit,
   onDelete,
   onToggleFavorite,
+  onRatePrompt,
   onCreateNew,
 }: PromptListProps) {
   if (isLoading) {
@@ -47,6 +49,7 @@ export function PromptList({
           onEdit={onEdit}
           onDelete={onDelete}
           onToggleFavorite={onToggleFavorite}
+          onRatePrompt={onRatePrompt}
         />
       ))}
     </div>

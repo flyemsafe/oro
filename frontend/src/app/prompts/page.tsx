@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { PromptList } from '@/components/prompts/PromptList'
 import { PromptSearch } from '@/components/prompts/PromptSearch'
 import { PromptFilters } from '@/components/prompts/PromptFilters'
-import { usePrompts, useUpdatePrompt, useDeletePrompt } from '@/hooks/usePrompts'
+import { usePrompts, useUpdatePrompt, useDeletePrompt, useRatePrompt } from '@/hooks/usePrompts'
 import { toast } from 'sonner'
 import type { Prompt } from '@/types/prompt'
 
@@ -31,6 +31,7 @@ export default function PromptsPage() {
 
   const updatePrompt = useUpdatePrompt()
   const deletePrompt = useDeletePrompt()
+  const ratePrompt = useRatePrompt()
 
   // Extract all unique tags from prompts for filter options
   const availableTags = useMemo(() => {
@@ -77,8 +78,17 @@ export default function PromptsPage() {
   }
 
   const handleEdit = (prompt: Prompt) => {
-    // TODO: Implement edit dialog/modal in next iteration
-    toast.info('Edit functionality coming soon!')
+    router.push(`/prompts/${prompt.id}/edit`)
+  }
+
+  const handleRatePrompt = (id: string, rating: number) => {
+    ratePrompt.mutate({
+      id,
+      data: {
+        rating,
+        success: true,
+      },
+    })
   }
 
   const handleCreateNew = () => {
@@ -148,6 +158,7 @@ export default function PromptsPage() {
             onEdit={handleEdit}
             onDelete={handleDelete}
             onToggleFavorite={handleToggleFavorite}
+            onRatePrompt={handleRatePrompt}
             onCreateNew={handleCreateNew}
           />
         </div>

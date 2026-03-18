@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { Home, FileText, Tag, Star, Settings, FolderOpen } from 'lucide-react'
+import { Home, FileText, Tag, Star, Settings, FolderOpen, NotebookPen, ListTodo, MessagesSquare } from 'lucide-react'
 import { Logo, LogoIcon } from '@/components/ui/Logo'
 
 const sidebarNavItems = [
@@ -16,6 +16,21 @@ const sidebarNavItems = [
     title: 'Prompts',
     href: '/prompts',
     icon: FileText,
+  },
+  {
+    title: 'Notes',
+    href: '/notes',
+    icon: NotebookPen,
+  },
+  {
+    title: 'Work Items',
+    href: '/work-items',
+    icon: ListTodo,
+  },
+  {
+    title: 'Sessions',
+    href: '/sessions',
+    icon: MessagesSquare,
   },
   {
     title: 'Tags',

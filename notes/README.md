@@ -20,7 +20,22 @@ From repo root:
 ./tools/capture-note.sh
 ```
 
-If you configured projects in the Oro UI (`/projects`), capture defaults to the active project's notes directory.
+Default target resolution:
+- If launched from another project workspace, notes are stored in that workspace root.
+- If launched from the Oro repo, capture defaults to the active project from Oro UI (`/projects`) when configured.
+- You can always override with `--project` or `ORO_NOTES_DIR`.
+
+## Session launcher
+
+```bash
+./tools/oro-session.sh
+```
+
+This launches an interactive notes session menu (no tmux) and opens your editor for:
+- `INBOX.md` kickoff
+- new prompt files
+- new thread files
+- capture-note flow
 
 The script asks:
 1. What type of dump (`brain_dump`, `prompt`, `thread`, `note`)

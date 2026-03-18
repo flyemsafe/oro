@@ -124,14 +124,39 @@ export function PromptFormFields({
                 {...field}
               />
             </FormControl>
-            <FormDescription>
-              <div className="flex justify-between items-center">
-                <span>Use {'{{variable}}'} syntax for template variables</span>
-                <span className="text-xs">
-                  {contentValue?.length || 0} characters
-                </span>
-              </div>
+            <FormDescription className="flex items-center justify-between gap-2">
+              <span>Use {'{{variable}}'} syntax for template variables</span>
+              <span className="text-xs">
+                {contentValue?.length || 0} characters
+              </span>
             </FormDescription>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      {/* Template Toggle */}
+      <FormField
+        control={form.control}
+        name="is_template"
+        render={({ field }) => (
+          <FormItem>
+            <div className="flex items-start gap-3 rounded-md border p-3">
+              <FormControl>
+                <input
+                  type="checkbox"
+                  checked={field.value}
+                  onChange={(event) => field.onChange(event.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-gray-300"
+                />
+              </FormControl>
+              <div className="space-y-1">
+                <FormLabel className="cursor-pointer">Use as template</FormLabel>
+                <FormDescription>
+                  Enable variable fill before copy. Use {'{{variable}}'} placeholders in content.
+                </FormDescription>
+              </div>
+            </div>
             <FormMessage />
           </FormItem>
         )}

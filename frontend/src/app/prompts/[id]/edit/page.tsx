@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { PromptForm } from '@/components/prompts/PromptForm'
 import { PromptFormValues } from '@/lib/validations/prompt'
-import { api } from '@/lib/api'
+import { promptsApi } from '@/lib/api/prompts'
 import { Prompt, UpdatePromptInput } from '@/types/prompt'
 import { Loader2 } from 'lucide-react'
 
@@ -20,8 +20,8 @@ export default function EditPromptPage() {
     const fetchPrompt = async () => {
       try {
         setLoading(true)
-        const response = await api.get(`/api/prompts/${id}`)
-        setPrompt(response.data)
+        const data = await promptsApi.fetchPrompt(id)
+        setPrompt(data)
       } catch (err) {
         console.error('Failed to fetch prompt:', err)
         setError('Failed to load prompt')
@@ -39,12 +39,15 @@ export default function EditPromptPage() {
     const payload: UpdatePromptInput = {
       title: data.title,
       content: data.content,
+      system_prompt: data.system_prompt || undefined,
+      description: data.description || undefined,
       category: data.category || undefined,
       tags: data.tags && data.tags.length > 0 ? data.tags : undefined,
       is_favorite: data.is_favorite,
+      is_template: data.is_template,
     }
 
-    await api.put(`/api/prompts/${id}`, payload)
+    await promptsApi.updatePrompt(id, payload)
   }
 
   // TODO: Fetch existing tags from API

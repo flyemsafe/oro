@@ -19,12 +19,15 @@ model Prompt {
   content       String   /// The actual prompt text
   systemPrompt  String?  @map("system_prompt") /// Optional system-level instructions
   description   String?  /// Optional description
+  isFavorite    Boolean  @default(false) @map("is_favorite")
+  isTemplate    Boolean  @default(false) @map("is_template")
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
   // Relationships
   tags          PromptTag[]
   executions    Execution[]
+  workItemLinks WorkItemPromptLink[]
 
   @@index([name])
   @@index([createdAt])
@@ -73,4 +76,128 @@ model Execution {
   @@index([promptId])
   @@index([executedAt])
   @@map("executions")
+}
+
+/// Session captures imported conversation transcripts (Gemini/Claude/etc.)
+/// and acts as the parent grouping for extracted work items.
+model Session {
+  id           String       @id @default(uuid())
+  title        String
+  source       String       /// e.g., gemini, claude, manual
+  sourcePath   String?      @map("source_path")
+  sourceHash   String?      @unique @map("source_hash")
+  rawContent   String?      @map("raw_content")
+  extractedAt  DateTime?    @map("extracted_at")
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  // Relationships
+  workItems    WorkItem[]
+
+  @@index([sourcePath])
+  @@index([createdAt])
+  @@map("sessions")
+}
+
+enum WorkItemType {
+  TASK
+  PROMPT
+  QUESTION
+  DECISION
+  RISK
+}
+
+enum WorkItemStatus {
+  TRIAGE
+  OPEN
+  IN_PROGRESS
+  BLOCKED
+  DONE
+}
+
+enum WorkItemPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+/// Work item is the atomic unit for tracking follow-ups from notes/sessions.
+model WorkItem {
+  id              String            @id @default(uuid())
+  sessionId       String?           @map("session_id")
+  title           String
+  details         String?
+  sourcePath      String?           @map("source_path")
+  sourceLineStart Int?              @map("source_line_start")
+  sourceLineEnd   Int?              @map("source_line_end")
+  sourceExcerpt   String?           @map("source_excerpt")
+  type            WorkItemType      @default(TASK)
+  status          WorkItemStatus    @default(TRIAGE)
+  priority        WorkItemPriority  @default(MEDIUM)
+  owner           String?
+  tags            String?
+  nextAction      String?           @map("next_action")
+  dueAt           DateTime?         @map("due_at")
+  closedAt        DateTime?         @map("closed_at")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  // Relationships
+  session         Session?          @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  followUps       FollowUp[]
+  promptLinks     WorkItemPromptLink[]
+
+  @@index([sessionId])
+  @@index([status])
+  @@index([priority])
+  @@index([type])
+  @@index([dueAt])
+  @@index([createdAt])
+  @@map("work_items")
+}
+
+enum FollowUpStatus {
+  OPEN
+  IN_PROGRESS
+  BLOCKED
+  DONE
+}
+
+/// Follow-up is a concrete next action attached to a work item.
+model FollowUp {
+  id          String          @id @default(uuid())
+  workItemId  String          @map("work_item_id")
+  title       String
+  notes       String?
+  status      FollowUpStatus  @default(OPEN)
+  dueAt       DateTime?       @map("due_at")
+  completedAt DateTime?       @map("completed_at")
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+
+  // Relationships
+  workItem    WorkItem        @relation(fields: [workItemId], references: [id], onDelete: Cascade)
+
+  @@index([workItemId])
+  @@index([status])
+  @@index([dueAt])
+  @@map("follow_ups")
+}
+
+/// Links generated work items to reusable prompts.
+model WorkItemPromptLink {
+  id         String   @id @default(uuid())
+  workItemId String   @map("work_item_id")
+  promptId   String   @map("prompt_id")
+  linkType   String   @default("reference") @map("link_type")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  // Relationships
+  workItem   WorkItem @relation(fields: [workItemId], references: [id], onDelete: Cascade)
+  prompt     Prompt   @relation(fields: [promptId], references: [id], onDelete: Cascade)
+
+  @@unique([workItemId, promptId])
+  @@index([promptId])
+  @@map("work_item_prompt_links")
 }

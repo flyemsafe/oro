@@ -1,24 +1,15 @@
-/**
- * Individual Prompt API Routes
- *
- * GET    /api/v1/prompts/[id] - Get single prompt
- * PUT    /api/v1/prompts/[id] - Update prompt
- * DELETE /api/v1/prompts/[id] - Delete prompt
- */
-
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { normalizeTagNames, summarizeRatings, toPromptResponse } from '@/lib/prompt-utils'
+
+export const runtime = 'nodejs'
 
 type RouteContext = {
   params: Promise<{ id: string }>
 }
 
-/**
- * GET /api/v1/prompts/[id]
- * Get a single prompt by ID
- */
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   context: RouteContext
 ) {
   try {
@@ -29,8 +20,8 @@ export async function GET(
       include: {
         tags: {
           include: {
-            tag: true
-          }
+            tag: true,
+          },
         },
         executions: {
           select: {
@@ -38,13 +29,13 @@ export async function GET(
             rating: true,
             success: true,
             notes: true,
-            executedAt: true
+            executedAt: true,
           },
           orderBy: {
-            executedAt: 'desc'
-          }
-        }
-      }
+            executedAt: 'desc',
+          },
+        },
+      },
     })
 
     if (!prompt) {
@@ -54,23 +45,16 @@ export async function GET(
       )
     }
 
-    // Transform response
+    const ratingSummary = summarizeRatings(prompt.executions)
     const response = {
-      id: prompt.id,
-      name: prompt.name,
-      content: prompt.content,
-      system_prompt: prompt.systemPrompt,
-      description: prompt.description,
-      created_at: prompt.createdAt.toISOString(),
-      updated_at: prompt.updatedAt.toISOString(),
-      tags: prompt.tags.map(pt => pt.tag),
-      executions: prompt.executions.map(e => ({
-        id: e.id,
-        rating: e.rating,
-        success: e.success,
-        notes: e.notes,
-        executed_at: e.executedAt.toISOString()
-      }))
+      ...toPromptResponse(prompt, ratingSummary),
+      executions: prompt.executions.map((execution) => ({
+        id: execution.id,
+        rating: execution.rating,
+        success: execution.success,
+        notes: execution.notes,
+        executed_at: execution.executedAt.toISOString(),
+      })),
     }
 
     return NextResponse.json(response)
@@ -83,10 +67,6 @@ export async function GET(
   }
 }
 
-/**
- * PUT /api/v1/prompts/[id]
- * Update an existing prompt
- */
 export async function PUT(
   request: NextRequest,
   context: RouteContext
@@ -95,11 +75,15 @@ export async function PUT(
     const { id } = await context.params
     const body = await request.json()
 
-    const { name, content, system_prompt, description } = body
-
-    // Check if prompt exists
     const existing = await prisma.prompt.findUnique({
-      where: { id }
+      where: { id },
+      include: {
+        tags: {
+          include: {
+            tag: true,
+          },
+        },
+      },
     })
 
     if (!existing) {
@@ -109,51 +93,74 @@ export async function PUT(
       )
     }
 
-    // If name is being changed, check for duplicates
-    if (name && name !== existing.name) {
+    const title = typeof body.title === 'string'
+      ? body.title.trim()
+      : typeof body.name === 'string'
+        ? body.name.trim()
+        : undefined
+
+    if (title && title !== existing.name) {
       const duplicate = await prisma.prompt.findUnique({
-        where: { name }
+        where: { name: title },
+        select: { id: true },
       })
 
       if (duplicate) {
         return NextResponse.json(
-          { error: 'Prompt with this name already exists' },
+          { error: 'Prompt with this title already exists' },
           { status: 409 }
         )
       }
     }
 
-    // Update prompt
-    const prompt = await prisma.prompt.update({
+    const tagNames = normalizeTagNames(body.tags)
+    const shouldReplaceTags = Array.isArray(body.tags)
+
+    const updatedPrompt = await prisma.prompt.update({
       where: { id },
       data: {
-        ...(name && { name }),
-        ...(content && { content }),
-        ...(system_prompt !== undefined && { systemPrompt: system_prompt }),
-        ...(description !== undefined && { description })
+        ...(title ? { name: title } : {}),
+        ...(typeof body.content === 'string' ? { content: body.content } : {}),
+        ...(body.system_prompt !== undefined
+          ? { systemPrompt: typeof body.system_prompt === 'string' ? body.system_prompt : null }
+          : {}),
+        ...(body.description !== undefined
+          ? { description: typeof body.description === 'string' ? body.description : null }
+          : {}),
+        ...(body.is_favorite !== undefined ? { isFavorite: Boolean(body.is_favorite) } : {}),
+        ...(body.is_template !== undefined ? { isTemplate: Boolean(body.is_template) } : {}),
+        ...(shouldReplaceTags
+          ? {
+              tags: {
+                deleteMany: {},
+                create: tagNames.map((name) => ({
+                  tag: {
+                    connectOrCreate: {
+                      where: { name },
+                      create: { name },
+                    },
+                  },
+                })),
+              },
+            }
+          : {}),
       },
       include: {
         tags: {
           include: {
-            tag: true
-          }
-        }
-      }
+            tag: true,
+          },
+        },
+        executions: {
+          select: {
+            rating: true,
+          },
+        },
+      },
     })
 
-    // Transform response
-    const response = {
-      id: prompt.id,
-      name: prompt.name,
-      content: prompt.content,
-      system_prompt: prompt.systemPrompt,
-      description: prompt.description,
-      created_at: prompt.createdAt.toISOString(),
-      updated_at: prompt.updatedAt.toISOString(),
-      tags: prompt.tags.map(pt => pt.tag)
-    }
-
-    return NextResponse.json(response)
+    const ratingSummary = summarizeRatings(updatedPrompt.executions)
+    return NextResponse.json(toPromptResponse(updatedPrompt, ratingSummary))
   } catch (error) {
     console.error('Error updating prompt:', error)
     return NextResponse.json(
@@ -163,20 +170,16 @@ export async function PUT(
   }
 }
 
-/**
- * DELETE /api/v1/prompts/[id]
- * Delete a prompt
- */
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   context: RouteContext
 ) {
   try {
     const { id } = await context.params
 
-    // Check if prompt exists
     const existing = await prisma.prompt.findUnique({
-      where: { id }
+      where: { id },
+      select: { id: true },
     })
 
     if (!existing) {
@@ -186,9 +189,8 @@ export async function DELETE(
       )
     }
 
-    // Delete prompt (cascade will handle tags and executions)
     await prisma.prompt.delete({
-      where: { id }
+      where: { id },
     })
 
     return NextResponse.json(

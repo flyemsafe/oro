@@ -1,36 +1,34 @@
-/**
- * Prompts API Routes
- *
- * GET  /api/v1/prompts - List prompts with pagination, search, and filters
- * POST /api/v1/prompts - Create new prompt
- */
-
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { normalizeTagNames, summarizeRatings, toPromptResponse } from '@/lib/prompt-utils'
 
-/**
- * GET /api/v1/prompts
- * List prompts with optional pagination, search, and tag filtering
- */
+export const runtime = 'nodejs'
+
+function parseBoolean(value: string | null): boolean | undefined {
+  if (value === 'true') return true
+  if (value === 'false') return false
+  return undefined
+}
+
+function parseTagFilter(raw: string | null): string[] {
+  if (!raw) return []
+  return raw
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean)
+}
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
+    const skip = Math.max(parseInt(searchParams.get('skip') || '0', 10), 0)
+    const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || '50', 10), 1), 250)
+    const search = (searchParams.get('search') || '').trim()
+    const tags = parseTagFilter(searchParams.get('tags'))
+    const isFavorite = parseBoolean(searchParams.get('is_favorite'))
 
-    // Pagination
-    const skip = parseInt(searchParams.get('skip') || '0')
-    const limit = parseInt(searchParams.get('limit') || '100')
-
-    // Search
-    const search = searchParams.get('search') || ''
-
-    // Tag filter
-    const tagsParam = searchParams.get('tags') || ''
-    const tags = tagsParam ? tagsParam.split(',').filter(Boolean) : []
-
-    // Build where clause
     const where: any = {}
 
-    // Search filter (name, content, or description)
     if (search) {
       where.OR = [
         { name: { contains: search } },
@@ -39,20 +37,20 @@ export async function GET(request: NextRequest) {
       ]
     }
 
-    // Tag filter
     if (tags.length > 0) {
       where.tags = {
         some: {
           tag: {
-            name: {
-              in: tags
-            }
-          }
-        }
+            name: { in: tags },
+          },
+        },
       }
     }
 
-    // Execute queries in parallel
+    if (typeof isFavorite === 'boolean') {
+      where.isFavorite = isFavorite
+    }
+
     const [prompts, total] = await Promise.all([
       prisma.prompt.findMany({
         where,
@@ -61,50 +59,32 @@ export async function GET(request: NextRequest) {
         include: {
           tags: {
             include: {
-              tag: true
-            }
+              tag: true,
+            },
           },
           executions: {
             select: {
-              id: true,
               rating: true,
-              executedAt: true
             },
-            orderBy: {
-              executedAt: 'desc'
-            },
-            take: 5  // Only last 5 executions
-          }
+          },
         },
         orderBy: {
-          createdAt: 'desc'
-        }
+          createdAt: 'desc',
+        },
       }),
-      prisma.prompt.count({ where })
+      prisma.prompt.count({ where }),
     ])
 
-    // Transform response to match FastAPI format
-    const transformedPrompts = prompts.map(prompt => ({
-      id: prompt.id,
-      name: prompt.name,
-      content: prompt.content,
-      system_prompt: prompt.systemPrompt,
-      description: prompt.description,
-      created_at: prompt.createdAt.toISOString(),
-      updated_at: prompt.updatedAt.toISOString(),
-      tags: prompt.tags.map(pt => pt.tag),
-      executions: prompt.executions.map(e => ({
-        id: e.id,
-        rating: e.rating,
-        executed_at: e.executedAt.toISOString()
-      }))
-    }))
+    const transformed = prompts.map((prompt) => {
+      const ratingSummary = summarizeRatings(prompt.executions)
+      return toPromptResponse(prompt, ratingSummary)
+    })
 
     return NextResponse.json({
-      prompts: transformedPrompts,
+      prompts: transformed,
       total,
       skip,
-      limit
+      limit,
     })
   } catch (error) {
     console.error('Error fetching prompts:', error)
@@ -115,73 +95,74 @@ export async function GET(request: NextRequest) {
   }
 }
 
-/**
- * POST /api/v1/prompts
- * Create a new prompt
- */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
+    const title = String(body.title || body.name || '').trim()
+    const content = String(body.content || '').trim()
+    const systemPrompt = typeof body.system_prompt === 'string' ? body.system_prompt : null
+    const description = typeof body.description === 'string' ? body.description : null
+    const isFavorite = Boolean(body.is_favorite)
+    const isTemplate = Boolean(body.is_template)
 
-    const { name, content, system_prompt, description, tag_ids = [] } = body
-
-    // Validation
-    if (!name || !content) {
+    if (!title || !content) {
       return NextResponse.json(
-        { error: 'name and content are required' },
+        { error: 'title and content are required' },
         { status: 400 }
       )
     }
 
-    // Check for duplicate name
-    const existing = await prisma.prompt.findUnique({
-      where: { name }
+    const duplicate = await prisma.prompt.findUnique({
+      where: { name: title },
+      select: { id: true },
     })
 
-    if (existing) {
+    if (duplicate) {
       return NextResponse.json(
-        { error: 'Prompt with this name already exists' },
+        { error: 'Prompt with this title already exists' },
         { status: 409 }
       )
     }
 
-    // Create prompt with tags
+    const tagNames = normalizeTagNames(body.tags)
+    const tagIds = Array.isArray(body.tag_ids)
+      ? body.tag_ids.filter((value: unknown) => typeof value === 'number')
+      : []
+
     const prompt = await prisma.prompt.create({
       data: {
-        name,
+        name: title,
         content,
-        systemPrompt: system_prompt,
+        systemPrompt,
         description,
+        isFavorite,
+        isTemplate,
         tags: {
-          create: tag_ids.map((tagId: number) => ({
-            tag: {
-              connect: { id: tagId }
-            }
-          }))
-        }
+          create: [
+            ...tagNames.map((name) => ({
+              tag: {
+                connectOrCreate: {
+                  where: { name },
+                  create: { name },
+                },
+              },
+            })),
+            ...tagIds.map((tagId: number) => ({
+              tag: {
+                connect: { id: tagId },
+              },
+            })),
+          ],
+        },
       },
       include: {
         tags: {
-          include: {
-            tag: true
-          }
-        }
-      }
+          include: { tag: true },
+        },
+      },
     })
 
-    // Transform response
-    const response = {
-      id: prompt.id,
-      name: prompt.name,
-      content: prompt.content,
-      system_prompt: prompt.systemPrompt,
-      description: prompt.description,
-      created_at: prompt.createdAt.toISOString(),
-      updated_at: prompt.updatedAt.toISOString(),
-      tags: prompt.tags.map(pt => pt.tag)
-    }
-
-    return NextResponse.json(response, { status: 201 })
+    return NextResponse.json(toPromptResponse(prompt), { status: 201 })
   } catch (error) {
     console.error('Error creating prompt:', error)
     return NextResponse.json(

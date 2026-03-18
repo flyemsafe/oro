@@ -13,6 +13,7 @@ RAW_TAGS="${RAW_TAGS:-}"
 USE_STDIN_CONTENT=0
 STDIN_IS_TTY=1
 PROJECT="${PROJECT:-}"
+CURRENT_DIR="${PWD}"
 if [[ ! -t 0 ]]; then
   STDIN_IS_TTY=0
 fi
@@ -127,18 +128,36 @@ try {
 NODE
 }
 
+resolve_workspace_root() {
+  local candidate="${1:-$PWD}"
+
+  if command -v git >/dev/null 2>&1 && git -C "$candidate" rev-parse --show-toplevel >/dev/null 2>&1; then
+    git -C "$candidate" rev-parse --show-toplevel
+  else
+    echo "$candidate"
+  fi
+}
+
 if [[ -n "${ORO_NOTES_DIR:-}" ]]; then
   NOTES_DIR="$ORO_NOTES_DIR"
-else
+elif [[ -n "$PROJECT" ]]; then
   RESOLVED_NOTES_DIR="$(resolve_active_notes_dir "$PROJECT" || true)"
-  if [[ -n "$PROJECT" && -z "$RESOLVED_NOTES_DIR" ]]; then
+  if [[ -z "$RESOLVED_NOTES_DIR" ]]; then
     echo "Project not found in $CONFIG_FILE: $PROJECT" >&2
     exit 1
   fi
-  if [[ -n "$RESOLVED_NOTES_DIR" ]]; then
-    NOTES_DIR="$RESOLVED_NOTES_DIR"
+  NOTES_DIR="$RESOLVED_NOTES_DIR"
+else
+  WORKSPACE_ROOT="$(resolve_workspace_root "$CURRENT_DIR")"
+  if [[ "$WORKSPACE_ROOT" != "$ROOT_DIR" ]]; then
+    NOTES_DIR="$WORKSPACE_ROOT"
   else
-    NOTES_DIR="$ROOT_DIR/notes"
+    RESOLVED_NOTES_DIR="$(resolve_active_notes_dir "" || true)"
+    if [[ -n "$RESOLVED_NOTES_DIR" ]]; then
+      NOTES_DIR="$RESOLVED_NOTES_DIR"
+    else
+      NOTES_DIR="$ROOT_DIR/notes"
+    fi
   fi
 fi
 
@@ -146,7 +165,13 @@ INBOX_FILE="$NOTES_DIR/INBOX.md"
 PROMPTS_DIR="$NOTES_DIR/prompts"
 THREADS_DIR="$NOTES_DIR/threads"
 mkdir -p "$NOTES_DIR" "$PROMPTS_DIR" "$THREADS_DIR" "$NOTES_DIR/archive"
-touch "$INBOX_FILE"
+if [[ ! -f "$INBOX_FILE" || ! -s "$INBOX_FILE" ]]; then
+  cat > "$INBOX_FILE" <<'EOF'
+# Project Notes Inbox
+
+Use this file for fast brain dumps and AI collaboration notes.
+EOF
+fi
 
 if [[ "$STDIN_IS_TTY" -eq 0 ]]; then
   [[ "$USE_STDIN_CONTENT" -eq 0 ]] && USE_STDIN_CONTENT=1
